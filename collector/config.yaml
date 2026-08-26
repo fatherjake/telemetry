@@ -1,0 +1,65 @@
+# OpenTelemetry Collector config for Claude Telemetry.
+#
+# Purpose: accept OTLP from Claude Code on both gRPC (4317) and HTTP (4318),
+# and append every received record verbatim to newline-delimited JSON files.
+# Nothing leaves this machine: the only exporters are local files.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Small batches keep the raw files close to real time without excessive fsync.
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+exporters:
+  file/logs:
+    path: /data/raw/logs.jsonl
+    format: json
+    rotation:
+      max_megabytes: 64
+      max_backups: 200
+      localtime: true
+  file/metrics:
+    path: /data/raw/metrics.jsonl
+    format: json
+    rotation:
+      max_megabytes: 64
+      max_backups: 200
+      localtime: true
+  file/traces:
+    path: /data/raw/traces.jsonl
+    format: json
+    rotation:
+      max_megabytes: 64
+      max_backups: 200
+      localtime: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/logs]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/metrics]
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/traces]
+  telemetry:
+    logs:
+      level: info

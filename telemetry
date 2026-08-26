@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Claude Telemetry CLI.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="${TELEMETRY_PYTHON:-python3}"
+if ! command -v "$PY" >/dev/null 2>&1; then
+  echo "python3 not found on PATH (set TELEMETRY_PYTHON to override)" >&2
+  exit 1
+fi
+cd "$HERE"
+exec "$PY" -m tel "$@"
