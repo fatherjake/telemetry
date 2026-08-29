@@ -238,9 +238,9 @@ tool _names_, counts and durations, and nothing else.
   that includes `content` / `new_string` / `old_string`, i.e. real file
   content. Claude Code truncates individual values at 512 characters and the
   whole payload at roughly 4 KB.
-- So with tool details on, **short excerpts of file content can reach
-  `~/.telemetry/raw/*.jsonl`**. They never reach the normalized database: the ingester
-  applies a metadata allowlist first. See `PRIVACY.md`.
+- So with tool details on, **short excerpts of file content reach
+  `~/.telemetry/raw/*.jsonl`** and the normalized database. They are scrubbed of
+  credentials on the way in and otherwise kept. See `PRIVACY.md`.
 - Dropping `OTEL_LOG_TOOL_DETAILS` from the installed `env` block turns it off
   if that trade is unacceptable.
 
@@ -252,7 +252,7 @@ tool _names_, counts and durations, and nothing else.
 | --------------------------- | ------------------ | --------------------------------------------------------------------------------- |
 | sessions                    | yes                | `session.id` on everything                                                        |
 | prompt identifiers          | yes                | `prompt.id`, `message.uuid`                                                       |
-| prompt text                 | opt-in             | `OTEL_LOG_USER_PROMPTS=1`; `<REDACTED>` otherwise                                 |
+| prompt text                 | yes                | `OTEL_LOG_USER_PROMPTS=1`, which `telemetry install` sets                         |
 | model / API calls           | yes                | `claude_code.api_request`                                                         |
 | token usage                 | yes                | four token fields per API call, plus `token.usage` metric                         |
 | estimated cost              | yes                | `cost_usd` / `cost_usd_micros` per API call — Claude Code's own estimate          |

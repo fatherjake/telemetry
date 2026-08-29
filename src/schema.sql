@@ -244,8 +244,7 @@ CREATE TABLE IF NOT EXISTS tool_calls (
     workflow_run_id TEXT,
     file_path      TEXT,
     bash_command   TEXT,                  -- redacted
-    params_json    TEXT,                  -- metadata-only allowlist
-    dropped_param_keys TEXT,              -- JSON array of keys we deliberately discarded
+    params_json    TEXT,                  -- every argument, credentials scrubbed
     sources        TEXT                   -- which signals contributed to this row
 );
 CREATE INDEX IF NOT EXISTS idx_tool_session ON tool_calls(session_id);
@@ -333,7 +332,7 @@ CREATE TABLE IF NOT EXISTS prompts (
     prompt_length INTEGER,
     command_name  TEXT,
     command_source TEXT,
-    prompt_text   TEXT                    -- NULL unless TELEMETRY_STORE_CONTENT=1
+    prompt_text   TEXT                    -- the prompt, verbatim, credentials scrubbed
 );
 
 CREATE TABLE IF NOT EXISTS responses (
@@ -348,7 +347,7 @@ CREATE TABLE IF NOT EXISTS responses (
     model           TEXT,
     request_id      TEXT,
     query_source    TEXT,
-    response_text   TEXT                  -- NULL unless TELEMETRY_STORE_CONTENT=1
+    response_text   TEXT                  -- the response, verbatim, credentials scrubbed
 );
 
 -- --------------------------------------------------------------- errors ----

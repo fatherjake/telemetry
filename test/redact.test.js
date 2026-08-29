@@ -101,36 +101,38 @@ test('non-strings pass through', () => {
   for (const v of [null, undefined, 42, 3.5, true]) assert.equal(scrub(v), v)
 })
 
-test('content keys dropped, paths kept', () => {
-  const [keptParams, dropped] = filterToolParams({
+test('tool arguments are kept in full, and scrubbed', () => {
+  // The allowlist that used to drop `old_string` and `content` is gone: the
+  // whole point of storing them is answering questions about what was written.
+  const kept = filterToolParams({
     file_path: '/repo/src/app.ts',
     old_string: 'SECRET',
     new_string: 'MORE SECRET',
     limit: 200,
     command: 'echo sk-ant-abcdefgh12345678',
   })
-  assert.equal(keptParams.file_path, '/repo/src/app.ts')
-  assert.equal(keptParams.limit, 200)
-  assert.ok(keptParams.command.includes(REDACTED))
-  assert.deepEqual([...dropped].sort(), ['new_string', 'old_string'])
+  assert.equal(kept.file_path, '/repo/src/app.ts')
+  assert.equal(kept.limit, 200)
+  assert.equal(kept.old_string, 'SECRET')
+  assert.equal(kept.new_string, 'MORE SECRET')
+  assert.ok(kept.command.includes(REDACTED))
 })
 
-test('nested structures become size markers', () => {
-  const [keptParams] = filterToolParams({ todos: [{ a: 1 }, { b: 2 }] })
-  assert.equal(keptParams.todos, '<list len=2>')
+test('nested structures are kept and scrubbed, not summarised', () => {
+  const kept = filterToolParams({
+    todos: [{ a: 'sk-ant-abcdefgh12345678' }, { b: 2 }],
+  })
+  assert.equal(kept.todos.length, 2)
+  assert.ok(kept.todos[0].a.includes(REDACTED))
+  assert.equal(kept.todos[1].b, 2)
 })
 
-test('unknown keys are dropped, not kept', () => {
-  const [keptParams, dropped] = filterToolParams({ something_new: 'whatever' })
-  assert.deepEqual(keptParams, {})
-  assert.deepEqual(dropped, ['something_new'])
-})
-
-test('store_content keeps everything but still scrubs', () => {
-  const [keptParams, dropped] = filterToolParams(
-    { content: 'key sk-ant-abcdefgh12345678' },
-    true,
-  )
-  assert.deepEqual(dropped, [])
-  assert.ok(keptParams.content.includes(REDACTED))
+test('file content survives, credentials in it do not', () => {
+  const kept = filterToolParams({
+    file_path: '/repo/.env',
+    content: 'PORT=3000\nAPI_KEY=8f3kd92mfnw01xzq\n',
+  })
+  assert.ok(kept.content.includes('PORT=3000'))
+  assert.ok(kept.content.includes(REDACTED))
+  assert.ok(!kept.content.includes('8f3kd92mfnw01xzq'))
 })

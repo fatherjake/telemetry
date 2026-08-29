@@ -221,27 +221,14 @@ export async function cmdStatus(): Promise<number> {
     conn.close()
   }
 
-  const policy = config.loadPolicy()
-  const contentOn = (
-    [
-      'store_content',
-      'store_tool_content',
-      'store_api_bodies',
-      'store_span_events',
-    ] as const
-  ).filter((k) => policy[k])
-  out(`\n${BOLD}Storage policy${RESET}`)
-  if (contentOn.length) {
-    out(`  ${c('content storage ON', YELLOW)}: ${contentOn.join(', ')}`)
-    out(
-      `  ${DIM}${config.HOME} holds source code and conversation text. ` +
-        `telemetry config privacy --disable-all reverts.${RESET}`,
-    )
-  } else {
-    out(
-      `  ${c('metadata only', GREEN)} (no prompts, responses or file contents)`,
-    )
-  }
+  out(`\n${BOLD}Storage${RESET}`)
+  out(
+    `  ${c('full fidelity', GREEN)} - prompts, responses, tool arguments and API bodies`,
+  )
+  out(
+    `  ${DIM}credentials are scrubbed on the way in; everything else is kept. ` +
+      `${config.HOME} holds source code and conversation text.${RESET}`,
+  )
   const gb = rs.bytes / 1024 ** 3
   if (gb >= 1)
     out(
@@ -538,25 +525,18 @@ function installedEnv(target?: string): Record<string, string> {
  */
 export async function cmdInstall(args: Parsed): Promise<number> {
   const target = settingsPath(args.values.settings as string)
-  const full = Boolean(args.values.full)
-  const env = config.otelEnv(full)
+  const env = config.otelEnv()
 
   out(`${BOLD}This will add an "env" block to ${target}${RESET}`)
   for (const [k, v] of Object.entries(env)) out(`  ${k}=${v}`)
-  if (full) {
-    out(
-      c(
-        '\n--full also exports prompts, responses, tool bodies and raw API JSON.',
-        YELLOW,
-      ),
-    )
-    out(
-      c(
-        `${config.HOME} will then contain your source code and conversation text. See PRIVACY.md.`,
-        YELLOW,
-      ),
-    )
-  }
+  out(
+    c(
+      `\nThis exports prompts, responses, tool bodies and raw API JSON, so ` +
+        `${config.HOME}\nwill hold your source code and conversation text. ` +
+        `Credentials are scrubbed;\nnothing else is. See PRIVACY.md.`,
+      YELLOW,
+    ),
+  )
   out()
   if (!(await ask('Proceed?', Boolean(args.values.yes)))) {
     out('aborted')
@@ -628,94 +608,6 @@ export async function cmdInstallSkill(args: Parsed): Promise<number> {
   mkdirSync(dirname(target), { recursive: true })
   copyFileSync(source, target)
   out(c('skill installed', GREEN) + ' - it applies to new Claude Code sessions')
-  return 0
-}
-
-// --- storage policy ----------------------------------------------------------
-
-const POLICY_LABELS: Record<string, [string, string]> = {
-  store_content: [
-    'prompt and assistant-response text',
-    'OTEL_LOG_USER_PROMPTS / OTEL_LOG_ASSISTANT_RESPONSES',
-  ],
-  store_tool_content: [
-    'full tool arguments, including file contents',
-    'OTEL_LOG_TOOL_DETAILS',
-  ],
-  store_api_bodies: [
-    'raw API request/response JSON',
-    'OTEL_LOG_RAW_API_BODIES',
-  ],
-  store_span_events: [
-    'tool input/output bodies from spans',
-    'OTEL_LOG_TOOL_CONTENT',
-  ],
-  git_reconcile: ['read-only git commit reconciliation', '-'],
-}
-
-export function cmdPrivacy(args: Parsed): number {
-  const policy: Record<string, boolean> = { ...config.loadPolicy() }
-  const enableAll = Boolean(args.values['enable-all'])
-  const disableAll = Boolean(args.values['disable-all'])
-
-  if (enableAll || disableAll) {
-    for (const k of Object.keys(POLICY_LABELS)) {
-      if (k !== 'git_reconcile') policy[k] = enableAll
-    }
-  }
-  let explicit = false
-  for (const k of Object.keys(POLICY_LABELS)) {
-    const value = (args.values as Record<string, unknown>)[
-      k.replace(/_/g, '-')
-    ] as string | undefined
-    if (value !== undefined) {
-      policy[k] = value === 'on'
-      explicit = true
-    }
-  }
-
-  const changed = enableAll || disableAll || explicit
-  if (changed) config.savePolicy(policy as unknown as config.Policy)
-
-  out(`${BOLD}Telemetry storage policy${RESET}  ${config.POLICY_FILE}`)
-  for (const [k, [desc, gate]] of Object.entries(POLICY_LABELS)) {
-    const on = policy[k] ?? false
-    const state = on
-      ? c('ON ', k === 'git_reconcile' ? GREEN : RED)
-      : c('off', GREEN)
-    out(`  ${state}  ${k.padEnd(20)} ${desc}`)
-    if (gate !== '-') out(`       ${DIM}needs Claude Code: ${gate}${RESET}`)
-  }
-  out(
-    `  ${c('ON ', GREEN)}  ${'redact_secrets'.padEnd(20)} credential redaction ` +
-      `${DIM}(always on)${RESET}`,
-  )
-
-  if (changed) {
-    out()
-    out('Saved. Applies to the next telemetry analyse.')
-    const anyContent = [
-      'store_content',
-      'store_tool_content',
-      'store_api_bodies',
-      'store_span_events',
-    ].some((k) => policy[k])
-    if (anyContent) {
-      out(
-        c(
-          '\nContent storage is enabled. Make sure Claude Code is also exporting content:',
-          YELLOW,
-        ),
-      )
-      out('  telemetry install --full')
-      out(
-        c(
-          `${config.HOME} will now contain source code and conversation text. Treat it as sensitive.`,
-          YELLOW,
-        ),
-      )
-    }
-  }
   return 0
 }
 
@@ -1031,7 +923,7 @@ export function purgeSelfTest(conn: db.Db): number {
 }
 
 /** Print the settings Claude Code is running with, and what we would set. */
-export function cmdEnv(args: Parsed): number {
+export function cmdEnv(): number {
   const live = installedEnv()
   out(`${BOLD}Installed in ${settingsPath()}${RESET}`)
   if (Object.keys(live).length) {
@@ -1040,9 +932,7 @@ export function cmdEnv(args: Parsed): number {
     out(`  ${DIM}nothing - run telemetry install${RESET}`)
   }
   out(`\n${BOLD}What telemetry install would set${RESET}`)
-  for (const [k, v] of Object.entries(
-    config.otelEnv(Boolean(args.values.full)),
-  )) {
+  for (const [k, v] of Object.entries(config.otelEnv())) {
     const marker = live[k] === v ? ' ' : c('*', YELLOW)
     out(` ${marker}${k}=${v}`)
   }
@@ -1206,10 +1096,8 @@ Capture and analyse Claude Code OpenTelemetry data locally.
 commands:
   init                  guided first run: settings, hooks, receiver, MCP
                           --yes            accept every step
-                          --full           also export prompts, responses and
-                                           tool bodies (see PRIVACY.md)
   install               point Claude Code at the local receiver
-                          --full --yes --settings PATH
+                          --yes --settings PATH
   install-hooks         add the SessionStart/SessionEnd context hooks
   start                 start the OTLP receiver
   stop                  stop the receiver
@@ -1222,16 +1110,10 @@ commands:
                           --json
   doctor                run the end-to-end self test
                           --keep           leave the test session in the database
-  config <what>         privacy, ignores, teardown
-    privacy               show or change what the database stores
-                            --enable-all --disable-all
-                            --store-content on|off      --store-tool-content on|off
-                            --store-api-bodies on|off   --store-span-events on|off
-                            --git-reconcile on|off
+  config <what>         ignores, teardown
     ignore                paths excluded from file activity
                             --add GLOB --remove GLOB --reset
     env                   show the telemetry settings Claude Code has
-                            --full
     uninstall             remove the env block, hooks, skill and MCP registration
                             --settings PATH
 `
@@ -1241,22 +1123,14 @@ const OPTIONS = {
   phase: { type: 'string' },
   'session-id': { type: 'string' },
   cwd: { type: 'string' },
-  'store-content': { type: 'string' },
-  'store-tool-content': { type: 'string' },
-  'store-api-bodies': { type: 'string' },
-  'store-span-events': { type: 'string' },
-  'git-reconcile': { type: 'string' },
   add: { type: 'string', multiple: true },
   remove: { type: 'string', multiple: true },
   yes: { type: 'boolean' },
-  full: { type: 'boolean' },
   quiet: { type: 'boolean' },
   json: { type: 'boolean' },
   keep: { type: 'boolean' },
   register: { type: 'boolean' },
   reset: { type: 'boolean' },
-  'enable-all': { type: 'boolean' },
-  'disable-all': { type: 'boolean' },
 } as const
 
 const parse = (argv: string[]) =>
@@ -1322,12 +1196,10 @@ export async function main(argv: string[]): Promise<number> {
     case 'config': {
       const sub = parsed.positionals[0]
       switch (sub) {
-        case 'privacy':
-          return cmdPrivacy(parsed)
         case 'ignore':
           return cmdIgnore(parsed)
         case 'env':
-          return cmdEnv(parsed)
+          return cmdEnv()
         case 'uninstall':
           return cmdUninstall(parsed)
         default:

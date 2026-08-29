@@ -70,11 +70,6 @@ export const OTLP_PORT = Number.parseInt(
  * tool the session sees, as mcp__<name>__telemetry_*. */
 export const MCP_SERVER_NAME = 'telemetry'
 
-/** Storage policy lives in a file so it applies to every `telemetry`
- * invocation, not just to shells that happen to have the variables exported.
- * Environment variables still win, so one-off overrides work. */
-export const POLICY_FILE = join(HOME, 'policy.json')
-
 /** Glob patterns for paths that should never count as file activity. Agent
  * scratchpads and dependency trees are churn, not work on the project. */
 export const IGNORE_FILE = join(HOME, 'ignore')
@@ -170,88 +165,13 @@ export function saveIgnores(patterns: string[]): void {
   writeFileSync(IGNORE_FILE, header + patterns.join('\n') + '\n')
 }
 
-// --- storage policy ---------------------------------------------------------
+// --- the one remaining switch ------------------------------------------------
 
-export interface Policy {
-  store_content: boolean
-  store_tool_content: boolean
-  store_api_bodies: boolean
-  store_span_events: boolean
-  git_reconcile: boolean
-  redact_secrets: boolean
-}
-
-const POLICY_DEFAULTS: Policy = {
-  store_content: false,
-  store_tool_content: false,
-  store_api_bodies: false,
-  store_span_events: false,
-  git_reconcile: true,
-  redact_secrets: true,
-}
-
-export function loadPolicy(): Policy {
-  const policy: Policy = { ...POLICY_DEFAULTS }
-  try {
-    if (existsSync(POLICY_FILE)) {
-      const data = JSON.parse(readFileSync(POLICY_FILE, 'utf8') || '{}')
-      for (const key of Object.keys(policy) as (keyof Policy)[]) {
-        if (key in data) policy[key] = Boolean(data[key])
-      }
-    }
-  } catch {
-    /* missing or malformed policy file: the conservative defaults stand */
-  }
-  return policy
-}
-
-export function savePolicy(policy: Partial<Policy>): void {
-  ensureDirs()
-  const merged: Policy = { ...POLICY_DEFAULTS }
-  for (const key of Object.keys(POLICY_DEFAULTS) as (keyof Policy)[]) {
-    if (key in policy) merged[key] = Boolean(policy[key])
-  }
-  writeFileSync(POLICY_FILE, JSON.stringify(merged, null, 2) + '\n')
-}
-
-const POLICY = loadPolicy()
-
-function flag(name: string, fallback: boolean): boolean {
-  const value = process.env[name]
-  if (value === undefined) return fallback
-  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
-}
-
-// --- Privacy switches (all default to the conservative option) --------------
-
-/** Store prompt / assistant-response text when Claude Code exports it. */
-export const STORE_CONTENT = flag(
-  'TELEMETRY_STORE_CONTENT',
-  POLICY.store_content,
-)
-
-/** Store the full tool argument JSON rather than the metadata-only allowlist. */
-export const STORE_TOOL_CONTENT = flag(
-  'TELEMETRY_STORE_TOOL_CONTENT',
-  POLICY.store_tool_content,
-)
-
-/** Store raw API request/response bodies if OTEL_LOG_RAW_API_BODIES was enabled. */
-export const STORE_API_BODIES = flag(
-  'TELEMETRY_STORE_API_BODIES',
-  POLICY.store_api_bodies,
-)
-
-/** Store span events (tool.output bodies) emitted under OTEL_LOG_TOOL_CONTENT. */
-export const STORE_SPAN_EVENTS = flag(
-  'TELEMETRY_STORE_SPAN_EVENTS',
-  POLICY.store_span_events,
-)
-
-/** Run read-only git commands against detected repositories for reconciliation. */
-export const GIT_RECONCILE = flag(
-  'TELEMETRY_GIT_RECONCILE',
-  POLICY.git_reconcile,
+/** Run read-only git commands against detected repositories for
+ * reconciliation. On by default; off is for the rare machine where shelling
+ * out to git is unwelcome, at the cost of project mapping and commits. */
+export const GIT_RECONCILE = !['0', 'false', 'no', 'off'].includes(
+  (process.env.TELEMETRY_GIT_RECONCILE ?? '').trim().toLowerCase(),
 )
 
 // --- what Claude Code is told to export -------------------------------------
@@ -262,7 +182,7 @@ export const GIT_RECONCILE = flag(
  * is no generated shell file and nothing to `source`: settings.json covers
  * every session however it was launched.
  */
-export function otelEnv(full = false): Record<string, string> {
+export function otelEnv(): Record<string, string> {
   const env: Record<string, string> = {
     CLAUDE_CODE_ENABLE_TELEMETRY: '1',
     OTEL_METRICS_EXPORTER: 'otlp',
@@ -282,18 +202,15 @@ export function otelEnv(full = false): Record<string, string> {
     // Without this Claude Code redacts tool parameters, and you lose file
     // paths, bash commands, skill names and subagent types entirely.
     OTEL_LOG_TOOL_DETAILS: '1',
-  }
-  if (full) {
-    // Prompts, responses, tool bodies and full API request JSON. The raw
-    // files then hold your source code and conversation text; see PRIVACY.md
-    // before turning this on.
-    Object.assign(env, {
-      OTEL_LOG_USER_PROMPTS: '1',
-      OTEL_LOG_ASSISTANT_RESPONSES: '1',
-      OTEL_LOG_TOOL_CONTENT: '1',
-      OTEL_LOG_RAW_API_BODIES: '1',
-      CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH: '262144',
-    })
+    // Prompts, responses, tool bodies and full API request JSON. Without
+    // these the database can say a session cost $20 but not what it was
+    // asked to do, which is most of the value - "which skill should have
+    // fired" is a question about the words, not the counts.
+    OTEL_LOG_USER_PROMPTS: '1',
+    OTEL_LOG_ASSISTANT_RESPONSES: '1',
+    OTEL_LOG_TOOL_CONTENT: '1',
+    OTEL_LOG_RAW_API_BODIES: '1',
+    CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH: '262144',
   }
   return env
 }

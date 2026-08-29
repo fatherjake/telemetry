@@ -727,30 +727,16 @@ export class Ingestor {
     if (handler) handler(attrs, ctx)
   }
 
-  /** Apply the content policy before anything is written to the DB. */
+  /** Scrub every attribute on the way to the database.
+   *
+   * Everything is kept - prompts, responses, tool arguments, API bodies. The
+   * only thing that does not survive is anything that looks like a
+   * credential. */
   private sanitiseEventAttrs(_name: string, attrs: Attrs): Attrs {
     const out: Attrs = {}
     for (const [k, v] of Object.entries(attrs)) {
-      if (
-        (k === 'prompt' || k === 'response' || k === 'user_prompt') &&
-        !config.STORE_CONTENT
-      ) {
-        out[k] =
-          v !== null && v !== undefined && v !== '' ? '[CONTENT NOT STORED]' : v
-        continue
-      }
-      if (k === 'body' && !config.STORE_API_BODIES) {
-        out[k] = '[CONTENT NOT STORED]'
-        continue
-      }
       if (k === 'tool_parameters' || k === 'tool_input') {
-        const parsed = maybeJson(v)
-        const [filtered, dropped] = filterToolParams(
-          parsed,
-          config.STORE_TOOL_CONTENT,
-        )
-        out[k] = filtered
-        if (dropped.length) out[k + '.dropped_keys'] = dropped
+        out[k] = filterToolParams(maybeJson(v))
         continue
       }
       out[k] = scrubDeep(v)
@@ -834,9 +820,7 @@ export class Ingestor {
   }
 
   private evUserPrompt(attrs: Attrs, ctx: Ctx): void {
-    const text = config.STORE_CONTENT
-      ? (attrs.prompt as string | undefined)
-      : null
+    const text = attrs.prompt as string | undefined
     db.insertIgnore(this.db, 'prompts', {
       dedupe_key: ctx.dk!,
       session_id: ctx.session_id,
@@ -851,9 +835,7 @@ export class Ingestor {
   }
 
   private evAssistantResponse(attrs: Attrs, ctx: Ctx): void {
-    const text = config.STORE_CONTENT
-      ? (attrs.response as string | undefined)
-      : null
+    const text = attrs.response as string | undefined
     db.insertIgnore(this.db, 'responses', {
       dedupe_key: ctx.dk!,
       session_id: ctx.session_id,
@@ -923,11 +905,8 @@ export class Ingestor {
     const tinput =
       (maybeJson(attrs.tool_input) as Record<string, unknown>) || {}
     const mergedParams = { ...tinput, ...params }
-    const [filteredRaw, dropped] = filterToolParams(
-      mergedParams,
-      config.STORE_TOOL_CONTENT,
-    )
-    const filtered = (filteredRaw as Record<string, unknown>) || {}
+    const filtered =
+      (filterToolParams(mergedParams) as Record<string, unknown>) || {}
 
     const [mserver, mtool] = mcpParts(toolName)
     const filePathRaw =
@@ -976,9 +955,6 @@ export class Ingestor {
       file_path: typeof filePathRaw === 'string' ? filePathRaw : null,
       bash_command: command,
       params_json: Object.keys(filtered).length ? dumps(filtered) : null,
-      dropped_param_keys: dropped.length
-        ? dumps([...new Set(dropped)].sort())
-        : null,
       sources: origin,
     }
     db.upsertMerge(this.db, 'tool_calls', 'merge_key', row)
@@ -1198,49 +1174,19 @@ export class Ingestor {
     const dk = `sp|${sp.trace_id}|${sp.span_id}`
 
     const safe: Attrs = {}
-    const contentKeys = [
-      'user_prompt',
-      'system_prompt_preview',
-      'user_system_prompt',
-      'response.model_output',
-      'tool_input',
-    ]
-    for (const [k, v] of Object.entries(attrs)) {
-      if (contentKeys.includes(k) && !config.STORE_CONTENT) {
-        safe[k] =
-          v !== null && v !== undefined && v !== '' ? '[CONTENT NOT STORED]' : v
-      } else {
-        safe[k] = scrubDeep(v)
-      }
-    }
+    for (const [k, v] of Object.entries(attrs)) safe[k] = scrubDeep(v)
 
-    // Span events carry tool input/output bodies when OTEL_LOG_TOOL_CONTENT is
-    // on. Keep names and sizes always; keep bodies only when allowed.
+    // Span events carry the tool input and output bodies.
     let spanEvents: string | null = null
     const rawEvents = (sp.span.events ?? []) as Record<string, any>[]
     if (rawEvents.length) {
-      const collected = rawEvents.map((ev) => {
-        const evAttrs = otlp.attrs(ev.attributes)
-        let payload: unknown
-        if (config.STORE_SPAN_EVENTS) {
-          payload = scrubDeep(evAttrs)
-        } else {
-          const trimmed: Attrs = {}
-          for (const [k, v] of Object.entries(evAttrs)) {
-            trimmed[k] =
-              typeof v === 'string' && String(v).length > 64
-                ? `<${String(v).length} chars not stored>`
-                : scrubDeep(v)
-          }
-          payload = trimmed
-        }
-        return {
+      spanEvents = dumps(
+        rawEvents.map((ev) => ({
           name: ev.name,
           time: otlp.nsToIso(ev.timeUnixNano),
-          attributes: payload,
-        }
-      })
-      spanEvents = dumps(collected)
+          attributes: scrubDeep(otlp.attrs(ev.attributes)),
+        })),
+      )
     }
 
     const inserted = db.insertIgnore(this.db, 'spans', {

@@ -28,13 +28,17 @@ OTEL_METRIC_EXPORT_INTERVAL=10000         # default 60000 feels dead
 OTEL_LOGS_EXPORT_INTERVAL=5000
 OTEL_TRACES_EXPORT_INTERVAL=5000
 OTEL_LOG_TOOL_DETAILS=1                   # see the trade-off below
+OTEL_LOG_USER_PROMPTS=1
+OTEL_LOG_ASSISTANT_RESPONSES=1
+OTEL_LOG_TOOL_CONTENT=1
+OTEL_LOG_RAW_API_BODIES=1
+CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH=262144
 ```
 
-`--full` adds `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_ASSISTANT_RESPONSES`,
-`OTEL_LOG_TOOL_CONTENT`, `OTEL_LOG_RAW_API_BODIES` and a 256 KB content
-ceiling. Pair it with `telemetry config privacy --enable-all` to actually
-store what arrives. Budget ~70–260 KB per API call for bodies, and watch the
-size of `~/.telemetry/raw`.
+The last five are what make the database worth querying: without them it can
+tell you a session cost $20 but not what it was asked to do. They also mean
+`~/.telemetry` holds your source code and conversation text — budget ~70–260 KB
+per API call, watch the size, and see [PRIVACY.md](../PRIVACY.md).
 
 `telemetry config env` shows what is installed against what would be
 installed, marking every difference.

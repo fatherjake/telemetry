@@ -146,113 +146,23 @@ export function scrubDeep(obj: unknown): unknown {
   return obj
 }
 
-// --- Tool parameter minimisation --------------------------------------------
+// --- Tool arguments ---------------------------------------------------------
 
-/** Keys we keep from tool arguments. Everything here is metadata: paths,
- * commands, patterns, identifiers. Content-bearing keys (`content`,
- * `new_string`, `old_string`, `prompt`, `edits`) are absent on purpose. */
-export const TOOL_PARAM_ALLOWLIST = new Set([
-  'file_path',
-  'filePath',
-  'path',
-  'notebook_path',
-  'notebookPath',
-  'command',
-  'bash_command',
-  'full_command',
-  'pattern',
-  'glob',
-  'type',
-  'output_mode',
-  'head_limit',
-  '-n',
-  '-i',
-  'url',
-  'query',
-  'domain',
-  'allowed_domains',
-  'blocked_domains',
-  'skill_name',
-  'skill',
-  'subagent_type',
-  'agent_type',
-  'agentType',
-  'mcp_server_name',
-  'mcp_tool_name',
-  'server_name',
-  'tool_name',
-  'description',
-  'offset',
-  'limit',
-  'timeout',
-  'run_in_background',
-  'replace_all',
-  'args',
-  'isolation',
-  'model',
-  'effort',
-  'label',
-  'phase',
-  'shell_id',
-  'filter',
-  'plan',
-  'todos',
-])
-
-/** Keys that are known to carry file or message content; always dropped unless
- * TELEMETRY_STORE_TOOL_CONTENT is on, and never included in the allowlist. */
-export const CONTENT_KEYS = new Set([
-  'content',
-  'new_string',
-  'old_string',
-  'edits',
-  'prompt',
-  'text',
-  'new_source',
-  'old_source',
-  'body',
-  'message',
-  'response',
-  'file_text',
-])
-
-/** Reduce tool arguments to metadata.
+/** Scrub a tool's arguments, keeping all of them.
  *
- * Returns `[filtered, droppedKeys]`. `args` and `plan`/`todos` are truncated
- * rather than kept whole because they can be long free text.
+ * There used to be a metadata-only allowlist here, dropping `content`,
+ * `old_string`, `new_string` and the rest. It made the database safe and
+ * useless in the same stroke: "which skill should have fired on this" is a
+ * question about what was actually written, and a row saying only that Edit
+ * ran on a path cannot answer it.
+ *
+ * So everything is kept, and `scrub` is what stands between the arguments and
+ * the disk. That is the trade this tool makes, stated plainly: full fidelity
+ * locally, credentials destroyed on the way in.
  */
-export function filterToolParams(
-  params: unknown,
-  storeContent = false,
-): [unknown, string[]] {
-  const dropped: string[] = []
-  if (params === null || params === undefined) return [null, dropped]
-  if (typeof params !== 'object' || Array.isArray(params)) {
-    return [storeContent ? scrubDeep(params) : null, dropped]
-  }
-
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
-    if (storeContent) {
-      out[k] = scrubDeep(v)
-      continue
-    }
-    if (CONTENT_KEYS.has(k) || !TOOL_PARAM_ALLOWLIST.has(k)) {
-      dropped.push(k)
-      continue
-    }
-    if (v !== null && typeof v === 'object') {
-      // Nested structures may hide content; keep only a size marker.
-      const kind = Array.isArray(v) ? 'list' : 'dict'
-      const size = Array.isArray(v) ? v.length : Object.keys(v as object).length
-      out[k] = `<${kind} len=${size}>`
-    } else if (typeof v === 'string' && v.length > 2048) {
-      out[k] = scrub(v.slice(0, 2048)) + '…[truncated]'
-    } else {
-      out[k] = scrubDeep(v)
-    }
-  }
-  return [out, dropped]
+export function filterToolParams(params: unknown): unknown {
+  if (params === null || params === undefined) return null
+  return scrubDeep(params)
 }
 
 /** Stable short hash, used to correlate repeated commands without storing them

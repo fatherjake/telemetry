@@ -117,7 +117,7 @@ writing, and neither can a bug.
 | ---------------------------------------------------- | --------------------------------------------------------------- |
 | `telemetry`                                          | same as `status`                                                |
 | `telemetry init`                                     | guided first run: settings, hooks, receiver, MCP, first analyse |
-| `telemetry install [--full]`                         | point Claude Code at the local receiver                         |
+| `telemetry install`                                  | point Claude Code at the local receiver                         |
 | `telemetry start`                                    | start the OTLP receiver                                         |
 | `telemetry stop`                                     | stop it                                                         |
 | `telemetry status`                                   | running? events arriving? anything unanalysed?                  |
@@ -157,17 +157,17 @@ might get committed.
 
 ## Privacy
 
-Metadata only, by default: no prompts, no responses, no file contents. Secret
-redaction has no off switch.
+Everything Claude Code exports is stored, in full, on this machine only —
+prompts, responses, tool arguments, API bodies. That is deliberate: a database
+that knows a session cost $20 but not what it was asked to do cannot answer
+"which skill should have fired here".
 
-```bash
-telemetry config privacy      # show the current posture
-telemetry status              # also shows it, in context
-```
+What is never stored is credentials. Every string is scrubbed on the way in,
+and that has no off switch.
 
-Content storage is opt-in and takes two deliberate steps — telling Claude Code
-to export it, and telling this project to store it. [PRIVACY.md](PRIVACY.md) is
-precise about what each one turns on.
+Nothing leaves this machine — no model call, no analytics, no egress. It is all
+in `~/.telemetry`, and `rm -rf ~/.telemetry` puts it back to knowing nothing.
+[PRIVACY.md](PRIVACY.md) is precise about what lands where.
 
 ---
 
