@@ -1,8 +1,8 @@
 """Render the README demo GIF frame by frame.
 
-The splash is Claude Code's own: the art and the theme colours were read out
-of the installed binary (`strings`), not approximated, so the header in the
-clip is the header you get when you run `claude`.
+The header is Claude Code's own session header, verbatim. The theme colour
+was read out of the installed binary (`strings`) rather than eyeballed:
+`claude` is rgb(215,119,87).
 
 Every figure in the answer is real too, queried out of the database this tool
 built while building itself. Nothing here is invented for the picture.
@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 OUT = pathlib.Path("frames")
 SCALE = 2
-W, H = 900, 516
+W, H = 800, 324
 PAD = 20
 # The full-block glyph's ink is exactly this tall at this size, and the
 # splash is built out of block characters - any looser and the art breaks
@@ -41,29 +41,12 @@ YELLOW = "#d7ba7d"
 font = ImageFont.truetype(FONT_PATH, 14 * SCALE, index=0)
 bold = ImageFont.truetype(FONT_PATH, 14 * SCALE, index=1)
 
-# Claude Code's startup splash, dark theme, transcribed from the binary.
-C = CLAUDE
+# Claude Code's session header, verbatim. The mascot is quadrant blocks, so
+# the rows only join up when the line step equals the glyph's ink height.
 SPLASH = [
-    [("Welcome to Claude Code ", C, True), ("v2.1.251", DIM, False)],
-    [("..........................................................", DIMMER, False)],
-    [],
-    [("     *                                       █████▓▓░     ", FG, False)],
-    [("                                 *         ███▓░     ░░   ", FG, False)],
-    [("            ░░░░░░                        ███▓░           ", FG, False)],
-    [("    ░░░   ░░░░░░░░░░                      ███▓░           ", FG, False)],
-    [("   ░░░░░░░░░░░░░░░░░░░    ", FG, False), ("*", WHITE, True),
-     ("                ██▓░░      ▓   ", FG, False)],
-    [("                                             ░▓▓███▓▓░    ", FG, False)],
-    [(" *                                 ░░░░                   ", DIM, False)],
-    [("                                 ░░░░░░░░                 ", DIM, False)],
-    [("                               ░░░░░░░░░░░░░░░░           ", DIM, False)],
-    [("      ", FG, False), (" █████████ ", C, False),
-     ("                                       ", FG, False), ("*", DIM, False)],
-    [("      ", FG, False), ("██▄█████▄██", C, False),
-     ("                        ", FG, False), ("*", WHITE, True)],
-    [("      ", FG, False), (" █████████ ", C, False), ("     *", FG, False)],
-    [(".......", DIMMER, False), ("█ █   █ █", C, False),
-     ("..........................................", DIMMER, False)],
+    [(" ▐▛███▛█   ", CLAUDE, False), ("Claude Code ", FG, False), ("v2.1.251", DIM, False)],
+    [("▝▜██████▀  ", CLAUDE, False), ("Opus 5 (1M context) · Claude Max", DIM, False)],
+    [("  ▝▝ ▝▝    ", CLAUDE, False), ("~/Workspace/telemetry", DIM, False)],
 ]
 
 PROMPT = "Analyse my sessions this week and tell me which skills are dead weight"
