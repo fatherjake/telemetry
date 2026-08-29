@@ -1,11 +1,14 @@
 {
-  "name": "agent-telemetry",
+  "name": "@fatherjake/agent-telemetry",
   "version": "0.1.0",
   "description": "Capture Claude Code's OpenTelemetry output on your own machine, normalize it into SQLite, and query it from inside Claude Code over MCP.",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fatherjake/telemetry.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "bin": {
     "telemetry": "bin/telemetry.js",
