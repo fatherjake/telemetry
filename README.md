@@ -53,6 +53,24 @@ at startup, so a session already running will not be captured.
 
 Work normally for an hour, then ask Claude "what did that session cost?".
 
+<details>
+<summary><b>If <code>npm install -g</code> fails with a permissions error</b></summary>
+
+On Linux, a distro-packaged Node usually puts npm's prefix at `/usr`, so a
+global install needs root. Point npm at a directory you own instead:
+
+```bash
+npm config set prefix ~/.npm-global
+export PATH="$HOME/.npm-global/bin:$PATH"   # add this to ~/.bashrc or ~/.zshrc
+npm install -g @fatherjake/agent-telemetry
+```
+
+Prefer this over `sudo`. `init` writes this program's own path into
+`~/.claude/settings.json`, and a root-owned install referenced from a user's
+config is a problem waiting for the next upgrade.
+
+</details>
+
 `init` is six steps. Each asks before it writes anything outside
 `~/.telemetry`, and each is independently re-runnable, so stopping half way is
 safe:
