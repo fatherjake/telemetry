@@ -1,43 +1,31 @@
-# Collected telemetry and everything derived from it.
-# This directory holds prompt text, source-code excerpts, API request bodies
-# and git metadata from real sessions. It must never be committed.
-data/
+# Collected telemetry lives in ~/.telemetry, never in the checkout.
+# Nothing here should ever produce data files, but just in case:
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.jsonl
 
-# Generated reports embed prompt text and file paths.
-reports/
-
-# Local runtime state (receiver pid, logs).
-var/
-
-# Generated shell settings; regenerate with ./setup.sh
-.env.telemetry
+# Secrets and credentials
 .env
 .env.*
 !.env.example
-
-# Secrets and credentials
 *.pem
 *.key
 *.p8
 *credentials*.json
 *service-account*.json
 
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Databases, in case one is ever created outside data/
-*.db
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite3
+# Node
+node_modules/
+dist/
+# generated from .claude/skills by the build, for packaging. Anchored, or it
+# would also swallow .claude/skills itself.
+/skills/
+*.tgz
+*.tsbuildinfo
+.npm/
 
 # Editor / OS noise
 .DS_Store
