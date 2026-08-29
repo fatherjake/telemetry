@@ -43,7 +43,7 @@ Requires **Node 22.5+** (for `node:sqlite`) and, optionally, `git` — without i
 project mapping and commit reconciliation are skipped.
 
 ```bash
-npm install -g claude-telemetry
+npm install -g agent-telemetry
 telemetry init      # settings, hooks, receiver, MCP, skill, first analyse
 telemetry doctor    # optional: proves the pipeline end to end
 ```
@@ -68,7 +68,7 @@ safe:
 
 Install it rather than `npx` it: steps 1, 2 and 4 write this program's own path
 into config files that have to keep working for months, and `npx` runs from a
-cache npm is free to delete. `init` warns you if you try. `npx claude-telemetry
+cache npm is free to delete. `init` warns you if you try. `npx agent-telemetry
 status` and `... doctor` only read, so they are fine for a look first.
 
 To undo all of it: `telemetry config uninstall` removes the env block, hooks,

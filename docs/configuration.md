@@ -120,13 +120,13 @@ launchd would respawn it forever:
 
 ```bash
 TELEMETRY="$(command -v telemetry)"
-cat > ~/Library/LaunchAgents/com.claude-telemetry.plist <<PLIST
+cat > ~/Library/LaunchAgents/com.agent-telemetry.plist <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.claude-telemetry</string>
+  <key>Label</key><string>com.agent-telemetry</string>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$HOME/.telemetry/launchagent.log</string>
   <key>StandardErrorPath</key><string>$HOME/.telemetry/launchagent.log</string>
@@ -140,8 +140,8 @@ cat > ~/Library/LaunchAgents/com.claude-telemetry.plist <<PLIST
 </dict>
 </plist>
 PLIST
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.claude-telemetry.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.agent-telemetry.plist
 ```
 
-Undo with `launchctl bootout gui/$(id -u)/com.claude-telemetry` and delete the
+Undo with `launchctl bootout gui/$(id -u)/com.agent-telemetry` and delete the
 file.

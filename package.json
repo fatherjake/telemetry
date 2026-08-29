@@ -1,5 +1,5 @@
 {
-  "name": "claude-telemetry",
+  "name": "agent-telemetry",
   "version": "0.1.0",
   "description": "Capture Claude Code's OpenTelemetry output on your own machine, normalize it into SQLite, and query it from inside Claude Code over MCP.",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "bin": {
     "telemetry": "bin/telemetry.js",
-    "claude-telemetry": "bin/telemetry.js"
+    "agent-telemetry": "bin/telemetry.js"
   },
   "files": [
     "bin",

@@ -392,7 +392,7 @@ function warnIfEphemeral(): void {
       YELLOW,
     ),
   )
-  out('  npm install -g claude-telemetry')
+  out('  npm install -g agent-telemetry')
   out(`  telemetry ${process.argv[2] ?? 'init'}\n`)
 }
 
