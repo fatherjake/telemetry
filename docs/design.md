@@ -1,6 +1,6 @@
 # How it works
 
-The design notes for Claude Telemetry: what is stored, how each derived number
+The design notes for Agent Telemetry: what is stored, how each derived number
 is arrived at, and which parts are inference rather than fact.
 
 Start with the [README](../README.md) for installation and day-to-day use.

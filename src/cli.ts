@@ -789,7 +789,7 @@ export async function cmdDoctor(args: Parsed): Promise<number> {
     return ok
   }
 
-  out(`${BOLD}Claude Telemetry self-test${RESET}\n`)
+  out(`${BOLD}Agent Telemetry self-test${RESET}\n`)
 
   await check('receiver process running', () => [
     Boolean(receiverRunning()),
@@ -1028,7 +1028,7 @@ async function registerMcp(args: Parsed): Promise<number> {
  * independently re-runnable, so stopping half way is safe.
  */
 export async function cmdInit(args: Parsed): Promise<number> {
-  out(`${BOLD}Claude Telemetry — setup${RESET}`)
+  out(`${BOLD}Agent Telemetry — setup${RESET}`)
   out(`${DIM}data lives in ${config.HOME}${RESET}\n`)
   config.ensureDirs()
 

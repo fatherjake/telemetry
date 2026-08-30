@@ -1,4 +1,4 @@
-# Claude Telemetry
+# Agent Telemetry
 
 Capture Claude Code's OpenTelemetry output on your own machine, normalize it
 into SQLite, and query it from inside Claude Code over MCP — what sessions

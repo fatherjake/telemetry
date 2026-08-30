@@ -1,4 +1,4 @@
--- Claude Telemetry - normalized store.
+-- Agent Telemetry - normalized store.
 --
 -- Design notes:
 --  * The newline-delimited JSON files under ~/.telemetry/raw/ are the append-only
