@@ -447,7 +447,7 @@ retention" is not a finding, "add this sentence to CLAUDE.md" is.
 
 Shell-derived file rows resolve relative paths against a best-guess working
 directory, and when that guess is one level off the same file lands under two
-repo-relative paths — `src/a/B.tsx` and `atlas-video/src/a/B.tsx`. Left alone
+repo-relative paths — `src/a/B.tsx` and `web-app/src/a/B.tsx`. Left alone
 they read as two files each edited half as often. `fold_paths()` merges them on
 the suffix relation before any signal is computed. It is a heuristic; the
 alternative is knowingly wrong counts.
